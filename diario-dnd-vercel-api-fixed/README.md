@@ -68,3 +68,8 @@ Usare sul foglio permessi di sola visualizzazione.
 
 Questa versione include una funzione serverless in `api/sheet.js`.
 L'app non legge più Google Sheets solo dal browser: prova prima `/api/sheet?tab=...`, che gira su Vercel e aggira i problemi CORS/NetworkError del browser.
+
+
+## Diario Esteso
+
+La vista principale `Diario` legge la scheda Google Sheet `Diario Esteso`, con sezioni narrative lunghe e aderenti al diario operativo consolidato. La scheda `Eventi` resta usata per Timeline e sintesi operative.

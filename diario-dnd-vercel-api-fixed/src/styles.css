@@ -199,3 +199,13 @@ select:focus, input:focus { border-color: #0f172a; }
   font-weight: 800;
 }
 .timeline-row p { margin: 4px 0 0; color: #475569; }
+
+.diary-mode-note {
+  margin-top: 0.35rem;
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+.section-body p {
+  white-space: pre-line;
+}

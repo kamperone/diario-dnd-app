@@ -6,6 +6,7 @@ export const TABS = {
   characters: "Personaggi",
   questions: "Questioni Aperte",
   info: "Stato Informazioni",
+  diaryExtended: "Diario Esteso",
 };
 
 export function parseCsv(text) {
@@ -118,12 +119,13 @@ export async function fetchSheetTab(tabName) {
 }
 
 export async function fetchDatabase() {
-  const [sessions, events, characters, questions, info] = await Promise.all([
+  const [sessions, events, characters, questions, info, diaryExtended] = await Promise.all([
     fetchSheetTab(TABS.sessions),
     fetchSheetTab(TABS.events),
     fetchSheetTab(TABS.characters),
     fetchSheetTab(TABS.questions),
     fetchSheetTab(TABS.info),
+    fetchSheetTab(TABS.diaryExtended).catch(() => []),
   ]);
 
   const latestSession = [...sessions].sort((a, b) => {
@@ -142,5 +144,6 @@ export async function fetchDatabase() {
     characters,
     questions,
     info,
+    diaryExtended,
   };
 }

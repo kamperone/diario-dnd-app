@@ -99,6 +99,65 @@ function sessionSorter(a, b) {
   return String(b.session_id || "").localeCompare(String(a.session_id || ""));
 }
 
+function makeEventSections(events, sessionId) {
+  return (events || [])
+    .filter((event) => !sessionId || event.session_id === sessionId)
+    .sort((a, b) => Number(a.ordine || 0) - Number(b.ordine || 0))
+    .map((event) => {
+      const tags = [
+        event.tipo,
+        ...String(event.tag || "")
+          .split(",")
+          .map((value) => value.trim())
+          .filter(Boolean),
+      ].filter(Boolean);
+      if (event.noto_ai_pg === true) tags.push("Noto ai PG");
+      if (event.segreto_dm === true) tags.push("Segreto DM");
+      if (String(event.stato || "").toLowerCase().includes("apert")) tags.push("Questione aperta");
+      return {
+        id: event.event_id || `${event.session_id}-${event.ordine}`,
+        icon: iconForEvent(event.tipo),
+        title: event.titolo || event.tipo || "Evento",
+        tags: [...new Set(tags)],
+        body: event.descrizione || "",
+        items: [
+          event.luogo ? `Luogo: ${event.luogo}` : "",
+          event.pg_coinvolti ? `PG coinvolti: ${event.pg_coinvolti}` : "",
+          event.png_coinvolti ? `PNG coinvolti: ${event.png_coinvolti}` : "",
+          event.fazioni ? `Fazioni: ${event.fazioni}` : "",
+          event.conseguenze ? `Conseguenze: ${event.conseguenze}` : "",
+          event.note_dm ? `Note DM: ${event.note_dm}` : "",
+        ].filter(Boolean),
+      };
+    });
+}
+
+function makeExtendedDiarySections(diaryRows, sessionId) {
+  return (diaryRows || [])
+    .filter((row) => row.mostra_in_app !== false)
+    .filter((row) => !sessionId || row.session_id === sessionId)
+    .sort((a, b) => Number(a.ordine || 0) - Number(b.ordine || 0))
+    .map((row) => {
+      const tags = [
+        row.tipo_sezione,
+        ...String(row.tag || "")
+          .split(",")
+          .map((value) => value.trim())
+          .filter(Boolean),
+      ].filter(Boolean);
+      if (row.noto_ai_pg === true) tags.push("Noto ai PG");
+      if (row.segreto_dm === true) tags.push("Segreto DM");
+      return {
+        id: row.id || `${row.session_id}-${row.ordine}`,
+        icon: iconForEvent(row.tipo_sezione),
+        title: row.titolo_sezione || row.tipo_sezione || "Sezione diario",
+        tags: [...new Set(tags)],
+        body: row.contenuto_esteso || "",
+        items: [],
+      };
+    });
+}
+
 export default function App() {
   const [query, setQuery] = useState("");
   const [tag, setTag] = useState("Tutti");
@@ -134,39 +193,14 @@ export default function App() {
     return sessions.find((session) => session.session_id === selectedSessionId) || sessions[0] || fallbackData.sessions[0];
   }, [sessions, selectedSessionId]);
 
-  const sections = useMemo(() => {
-    const sessionId = latestSession?.session_id;
-    return (db.events || [])
-      .filter((event) => !sessionId || event.session_id === sessionId)
-      .sort((a, b) => Number(a.ordine || 0) - Number(b.ordine || 0))
-      .map((event) => {
-        const tags = [
-          event.tipo,
-          ...String(event.tag || "")
-            .split(",")
-            .map((value) => value.trim())
-            .filter(Boolean),
-        ].filter(Boolean);
-        if (event.noto_ai_pg === true) tags.push("Noto ai PG");
-        if (event.segreto_dm === true) tags.push("Segreto DM");
-        if (String(event.stato || "").toLowerCase().includes("apert")) tags.push("Questione aperta");
-        return {
-          id: event.event_id || `${event.session_id}-${event.ordine}`,
-          icon: iconForEvent(event.tipo),
-          title: event.titolo || event.tipo || "Evento",
-          tags: [...new Set(tags)],
-          body: event.descrizione || "",
-          items: [
-            event.luogo ? `Luogo: ${event.luogo}` : "",
-            event.pg_coinvolti ? `PG coinvolti: ${event.pg_coinvolti}` : "",
-            event.png_coinvolti ? `PNG coinvolti: ${event.png_coinvolti}` : "",
-            event.fazioni ? `Fazioni: ${event.fazioni}` : "",
-            event.conseguenze ? `Conseguenze: ${event.conseguenze}` : "",
-            event.note_dm ? `Note DM: ${event.note_dm}` : "",
-          ].filter(Boolean),
-        };
-      });
+  const eventSections = useMemo(() => {
+    return makeEventSections(db.events || [], latestSession?.session_id);
   }, [db.events, latestSession]);
+
+  const sections = useMemo(() => {
+    const extended = makeExtendedDiarySections(db.diaryExtended || [], latestSession?.session_id);
+    return extended.length > 0 ? extended : eventSections;
+  }, [db.diaryExtended, eventSections, latestSession]);
 
   const allTags = useMemo(() => {
     const tags = new Set(["Tutti"]);
@@ -229,6 +263,7 @@ export default function App() {
             <div>
               <h2>Atto {latestSession?.atto} — Sessione {latestSession?.sessione}</h2>
               <p>{latestSession?.titolo}</p>
+              <p className="diary-mode-note">Vista Diario esteso: testo lungo e aderente al resoconto operativo. La Timeline resta sintetica.</p>
             </div>
             <div className="control-grid">
               <select value={latestSession?.session_id || ""} onChange={(event) => setSelectedSessionId(event.target.value)}>
@@ -300,7 +335,7 @@ export default function App() {
         <main className="card timeline-card">
           <h2>Timeline sintetica</h2>
           <div className="timeline">
-            {sections.map((event, index) => (
+            {eventSections.map((event, index) => (
               <div key={event.id} className="timeline-row">
                 <span className="timeline-index">{index + 1}</span>
                 <div><strong>{event.title}</strong><p>{event.body}</p></div>
