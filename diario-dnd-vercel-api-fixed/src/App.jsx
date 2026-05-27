@@ -11,6 +11,10 @@ import {
   Heart,
   Landmark,
   Map,
+  Paperclip,
+  ExternalLink,
+  FileText,
+  Image as ImageIcon,
   RefreshCw,
   ScrollText,
   Search,
@@ -158,6 +162,63 @@ function makeExtendedDiarySections(diaryRows, sessionId) {
     });
 }
 
+function isLikelyImage(attachment) {
+  const type = String(attachment.tipo_file || "").toLowerCase();
+  const url = String(attachment.url || "").toLowerCase();
+  return (
+    type.includes("immagine") ||
+    type.includes("image") ||
+    type.includes("png") ||
+    type.includes("jpg") ||
+    type.includes("jpeg") ||
+    type.includes("webp") ||
+    /\.(png|jpe?g|webp|gif)(\?|$)/i.test(url)
+  );
+}
+
+function AttachmentCard({ attachment }) {
+  const isImage = isLikelyImage(attachment);
+  const tags = String(attachment.tag || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  return (
+    <article className="card attachment-card">
+      <div className="attachment-top">
+        <span className="icon-box">{isImage ? <ImageIcon size={20} /> : <FileText size={20} />}</span>
+        <div>
+          <h3>{attachment.titolo || "Allegato"}</h3>
+          <div className="tag-row">
+            {attachment.session_id && <Tag>{attachment.session_id}</Tag>}
+            {attachment.tipo_file && <Tag>{attachment.tipo_file}</Tag>}
+            {attachment.categoria && <Tag>{attachment.categoria}</Tag>}
+          </div>
+        </div>
+      </div>
+      {attachment.descrizione && <p className="attachment-description">{attachment.descrizione}</p>}
+      {isImage && attachment.url && (
+        <a href={attachment.url} target="_blank" rel="noreferrer" className="attachment-preview-link">
+          <img src={attachment.url} alt={attachment.titolo || "Allegato"} className="attachment-preview" />
+        </a>
+      )}
+      {tags.length > 0 && (
+        <div className="tag-row attachment-tags">
+          {tags.map((item) => <Tag key={item}>{item}</Tag>)}
+        </div>
+      )}
+      {attachment.note_dm && <p className="attachment-note"><strong>Note DM:</strong> {attachment.note_dm}</p>}
+      {attachment.url ? (
+        <a href={attachment.url} target="_blank" rel="noreferrer" className="open-link">
+          <ExternalLink size={16} /> Apri allegato
+        </a>
+      ) : (
+        <p className="attachment-note">Nessun URL impostato.</p>
+      )}
+    </article>
+  );
+}
+
 export default function App() {
   const [query, setQuery] = useState("");
   const [tag, setTag] = useState("Tutti");
@@ -220,6 +281,19 @@ export default function App() {
 
   const status = loading ? "Caricamento..." : loadError ? "Fallback locale" : "Collegato allo Sheet";
 
+  const currentAttachments = useMemo(() => {
+    return (db.attachments || [])
+      .filter((attachment) => attachment.visibile_in_app !== false)
+      .filter((attachment) => !latestSession?.session_id || !attachment.session_id || attachment.session_id === latestSession.session_id)
+      .sort((a, b) => String(a.titolo || "").localeCompare(String(b.titolo || "")));
+  }, [db.attachments, latestSession]);
+
+  const allAttachments = useMemo(() => {
+    return (db.attachments || [])
+      .filter((attachment) => attachment.visibile_in_app !== false)
+      .sort((a, b) => String(a.session_id || "").localeCompare(String(b.session_id || "")) || String(a.titolo || "").localeCompare(String(b.titolo || "")));
+  }, [db.attachments]);
+
   return (
     <div className="app-shell">
       <header className="hero">
@@ -250,6 +324,7 @@ export default function App() {
           ["questioni", "Questioni aperte", AlertTriangle],
           ["info", "Stato info", EyeOff],
           ["timeline", "Timeline", Clock],
+          ["allegati", "Allegati", Paperclip],
         ].map(([key, label, Icon]) => (
           <button key={key} type="button" className={tab === key ? "tab active" : "tab"} onClick={() => setTab(key)}>
             <Icon size={18} /> {label}
@@ -284,6 +359,16 @@ export default function App() {
             {filteredSections.map((section, index) => <SectionCard key={section.id} section={section} defaultOpen={index < 2} />)}
             {filteredSections.length === 0 && <div className="empty-state">Nessun risultato trovato.</div>}
           </section>
+
+          {currentAttachments.length > 0 && (
+            <section className="card controls-card attachments-session-block">
+              <h2>Allegati collegati a questa sessione</h2>
+              <p>Documenti, immagini o file esterni indicizzati nel diario.</p>
+              <div className="attachment-grid compact">
+                {currentAttachments.map((attachment) => <AttachmentCard key={attachment.id || attachment.url || attachment.titolo} attachment={attachment} />)}
+              </div>
+            </section>
+          )}
         </main>
       )}
 
@@ -342,6 +427,34 @@ export default function App() {
               </div>
             ))}
           </div>
+        </main>
+      )}
+
+      {tab === "allegati" && (
+        <main>
+          <section className="card controls-card">
+            <h2>Allegati</h2>
+            <p>File esterni caricati su Google Drive e indicizzati nello Sheet. L’app non carica file direttamente: mostra solo link e anteprime disponibili.</p>
+            <div className="control-grid attachments-controls">
+              <select value={latestSession?.session_id || ""} onChange={(event) => setSelectedSessionId(event.target.value)}>
+                {sessions.map((session) => (
+                  <option key={session.session_id} value={session.session_id}>
+                    {session.session_id} — {session.titolo}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </section>
+          <section className="attachment-grid">
+            {currentAttachments.map((attachment) => <AttachmentCard key={attachment.id || attachment.url || attachment.titolo} attachment={attachment} />)}
+            {currentAttachments.length === 0 && <div className="empty-state">Nessun allegato collegato alla sessione selezionata.</div>}
+          </section>
+          {allAttachments.length > currentAttachments.length && (
+            <section className="card controls-card all-attachments-note">
+              <h2>Archivio allegati</h2>
+              <p>Per vedere gli allegati di un’altra sessione, cambia sessione dal menu sopra o dalla scheda Diario.</p>
+            </section>
+          )}
         </main>
       )}
     </div>

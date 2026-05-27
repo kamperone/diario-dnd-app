@@ -140,4 +140,6 @@ export const fallbackData = {
       note: "Non anticipare nella sintesi per i PG.",
     },
   ],
+  diaryExtended: [],
+  attachments: [],
 };

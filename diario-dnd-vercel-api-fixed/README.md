@@ -1,75 +1,37 @@
-# Diario Operativo D&D — App Vercel
+# Diario D&D App
 
-App React/Vite per consultare il Diario operativo della campagna D&D da un Google Sheet pubblicato in sola lettura.
+App React + Vite per consultare il Diario operativo della campagna D&D.
 
-## Fonte dati
+## Funzioni
 
-Google Sheet collegato:
-
-`1A5Ko17ewraXref1idfH9apPaR7_aW6kfXgI_SP3qeRg`
-
-L'app prova a leggere le schede:
-
-- Sessioni
-- Eventi
+- Diario esteso leggibile per sessione
+- Timeline sintetica
 - Personaggi
-- Questioni Aperte
-- Stato Informazioni
+- Questioni aperte
+- Stato informazioni
+- Allegati indicizzati da Google Drive tramite la scheda `Allegati`
 
-Se la lettura fallisce, mostra una copia locale di emergenza.
+## Allegati
 
-## Uso locale
+L'app non carica file direttamente. Per aggiungere un allegato:
 
-```bash
-npm install
-npm run dev
-```
+1. Carica il file su Google Drive.
+2. Imposta il file come `Chiunque abbia il link → Visualizzatore` se deve essere visibile nell'app.
+3. Aggiungi una riga nella scheda `Allegati` del Google Sheet con:
+   - `id`
+   - `session_id`
+   - `titolo`
+   - `tipo_file`
+   - `categoria`
+   - `descrizione`
+   - `url`
+   - `visibile_in_app` = TRUE
+   - `tag`
+   - `note_dm`
 
-## Test
+## Deploy
 
-```bash
-npm test
-```
+Root directory Vercel: cartella del progetto contenente `package.json`.
 
-## Build
-
-```bash
-npm run build
-```
-
-## Deploy su Vercel
-
-### Metodo semplice via GitHub
-
-1. Crea un repository GitHub.
-2. Carica tutto il contenuto di questa cartella.
-3. Vai su Vercel e scegli **Add New Project**.
-4. Importa il repository.
-5. Vercel dovrebbe riconoscere Vite automaticamente.
-6. Build command: `npm run build`.
-7. Output directory: `dist`.
-8. Deploy.
-
-### Metodo CLI
-
-```bash
-npm install
-npm run build
-npx vercel
-npx vercel --prod
-```
-
-## Note sicurezza
-
-L'app legge solo il Google Sheet pubblicato. Non dà accesso al resto di Google Drive.
-Usare sul foglio permessi di sola visualizzazione.
-
-## Fix API Vercel
-
-Questa versione include una funzione serverless in `api/sheet.js`.
-L'app non legge più Google Sheets solo dal browser: prova prima `/api/sheet?tab=...`, che gira su Vercel e aggira i problemi CORS/NetworkError del browser.
-
-
-## Diario Esteso
-
-La vista principale `Diario` legge la scheda Google Sheet `Diario Esteso`, con sezioni narrative lunghe e aderenti al diario operativo consolidato. La scheda `Eventi` resta usata per Timeline e sintesi operative.
+Build command: `npm run build`
+Output directory: `dist`

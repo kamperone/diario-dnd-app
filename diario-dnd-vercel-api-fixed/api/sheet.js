@@ -6,6 +6,8 @@ const ALLOWED_TABS = new Set([
   "Personaggi",
   "Questioni Aperte",
   "Stato Informazioni",
+  "Diario Esteso",
+  "Allegati",
 ]);
 
 function parseCsv(text) {
