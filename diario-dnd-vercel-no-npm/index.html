@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Diario D&D</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="hero">
+        <div>
+          <div class="pill-row"><span class="pill dark">Atto II</span><span class="pill">Diario operativo</span></div>
+          <h1>Diario operativo — Campagna D&D</h1>
+          <p id="summary">Caricamento dati...</p>
+          <div class="actions">
+            <button id="refreshBtn" class="button primary">Aggiorna dati</button>
+            <span id="status" class="status">In attesa</span>
+          </div>
+        </div>
+        <aside class="info-card">
+          <div><strong>Sessione:</strong> <span id="currentSessionLabel">—</span></div>
+          <div><strong>Luogo:</strong> <span id="currentLocation">—</span></div>
+          <div><strong>Stato:</strong> <span id="currentStatus">—</span></div>
+        </aside>
+      </header>
+
+      <section class="controls">
+        <label>
+          Sessione
+          <select id="sessionSelect"></select>
+        </label>
+        <label>
+          Cerca
+          <input id="searchInput" type="search" placeholder="Jal, Westgate, allegati..." />
+        </label>
+      </section>
+
+      <nav class="tabs" aria-label="Sezioni diario">
+        <button class="tab active" data-tab="diario">Diario</button>
+        <button class="tab" data-tab="timeline">Timeline</button>
+        <button class="tab" data-tab="personaggi">Personaggi</button>
+        <button class="tab" data-tab="questioni">Questioni</button>
+        <button class="tab" data-tab="info">Stato info</button>
+        <button class="tab" data-tab="allegati">Allegati</button>
+      </nav>
+
+      <main id="content" class="content"></main>
+    </div>
+
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>
