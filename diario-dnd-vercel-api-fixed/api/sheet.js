@@ -1,14 +1,16 @@
 const SHEET_ID = "1A5Ko17ewraXref1idfH9apPaR7_aW6kfXgI_SP3qeRg";
 
-const ALLOWED_TABS = new Set([
+const ALLOWED_TABS = [
   "Sessioni",
   "Eventi",
   "Personaggi",
   "Questioni Aperte",
   "Stato Informazioni",
   "Diario Esteso",
+  "Oggetti",
+  "Fazioni",
   "Allegati",
-]);
+];
 
 function parseCsv(text) {
   const rows = [];
@@ -17,92 +19,105 @@ function parseCsv(text) {
   let quoted = false;
 
   for (let i = 0; i < text.length; i += 1) {
-    const c = text[i];
+    const char = text[i];
     const next = text[i + 1];
 
     if (quoted) {
-      if (c === '"' && next === '"') {
+      if (char === '"' && next === '"') {
         cell += '"';
         i += 1;
-      } else if (c === '"') {
+      } else if (char === '"') {
         quoted = false;
       } else {
-        cell += c;
+        cell += char;
       }
-    } else if (c === '"') {
+    } else if (char === '"') {
       quoted = true;
-    } else if (c === ",") {
+    } else if (char === ",") {
       row.push(cell);
       cell = "";
-    } else if (c === "\n") {
+    } else if (char === "\n") {
       row.push(cell);
       rows.push(row);
       row = [];
       cell = "";
-    } else if (c !== "\r") {
-      cell += c;
+    } else if (char !== "\r") {
+      cell += char;
     }
   }
 
   row.push(cell);
   rows.push(row);
-  return rows.filter((r) => r.some((c) => String(c).trim() !== ""));
+
+  return rows.filter((currentRow) =>
+    currentRow.some((value) => String(value).trim() !== "")
+  );
 }
 
 function coerceValue(value) {
   const raw = value ?? "";
-  const v = String(raw).trim();
-  if (v === "TRUE" || v === "true" || v === "VERO") return true;
-  if (v === "FALSE" || v === "false" || v === "FALSO") return false;
-  if (v !== "" && !Number.isNaN(Number(v))) return Number(v);
+  const trimmed = String(raw).trim();
+
+  if (trimmed === "TRUE" || trimmed === "true") return true;
+  if (trimmed === "FALSE" || trimmed === "false") return false;
+  if (trimmed !== "" && !Number.isNaN(Number(trimmed))) return Number(trimmed);
+
   return raw;
 }
 
 function rowsToObjects(rows) {
   if (!rows.length) return [];
-  const headers = rows[0].map((h) => String(h).trim());
+
+  const headers = rows[0].map((header) => String(header).trim());
+
   return rows.slice(1).map((row) => {
     const obj = {};
+
     headers.forEach((header, index) => {
       obj[header] = coerceValue(row[index] ?? "");
     });
+
     return obj;
   });
 }
 
-export default async function handler(req, res) {
-  try {
-    const tab = String(req.query.tab || "").trim();
+export default async function handler(request, response) {
+  const tab = String(request.query.tab || "");
 
-    if (!ALLOWED_TABS.has(tab)) {
-      res.status(400).json({ error: `Tab non valida o non consentita: ${tab}` });
-      return;
-    }
-
-    const csvUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab)}`;
-    const response = await fetch(csvUrl, {
-      headers: {
-        "User-Agent": "diario-dnd-vercel/1.0",
-      },
+  if (!ALLOWED_TABS.includes(tab)) {
+    return response.status(400).json({
+      error: `Tab non valida o non consentita: ${tab}`,
+      allowedTabs: ALLOWED_TABS,
     });
+  }
 
-    if (!response.ok) {
-      const body = await response.text().catch(() => "");
-      res.status(response.status).json({
-        error: `Google Sheets ha risposto HTTP ${response.status}`,
-        detail: body.slice(0, 500),
+  try {
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(
+      tab
+    )}`;
+
+    const googleResponse = await fetch(url);
+
+    if (!googleResponse.ok) {
+      const detail = await googleResponse.text();
+
+      return response.status(googleResponse.status).json({
+        error: `Google Sheets ha risposto HTTP ${googleResponse.status}`,
+        detail: detail.slice(0, 500),
       });
-      return;
     }
 
-    const csv = await response.text();
-    const data = rowsToObjects(parseCsv(csv));
+    const csv = await googleResponse.text();
+    const rows = rowsToObjects(parseCsv(csv));
 
-    res.setHeader("Cache-Control", "s-maxage=30, stale-while-revalidate=120");
-    res.status(200).json({ tab, rows: data });
+    return response.status(200).json({
+      tab,
+      rows,
+    });
   } catch (error) {
-    res.status(500).json({
-      error: error instanceof Error ? error.message : String(error),
+    return response.status(500).json({
+      error: "Errore interno durante la lettura dello Sheet",
+      detail: error instanceof Error ? error.message : String(error),
     });
   }
 }
